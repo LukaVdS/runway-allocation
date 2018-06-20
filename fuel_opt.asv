@@ -1,0 +1,1 @@
+addpath ('yourCOShome\cplex\matlab\x86_win32')
