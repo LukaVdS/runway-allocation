@@ -156,7 +156,7 @@ end
 function out = Xindex(f,r,d)
     dmax = 6;
     rmax = 2;
-    out = (f-1)*rmax*dmax + (r-1)*dmax + d;  % Function given the variable index for each X(i,j,k) [=(m,n,p)]  
+    out = (f-1)*rmax* + (r-1)*dmax + d;  % Function given the variable index for each X(i,j,k) [=(m,n,p)]  
 end
 
 % To return indexing of DV in math model from CPLEX index
