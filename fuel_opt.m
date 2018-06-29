@@ -7,7 +7,7 @@
 %%
 tables = 'Tables.xlsx';
 [t_int, IAF, MTOW] = ac_generator;
-testset = readtable(tables,'Sheet','testset','Range','D1:D281');
+testset = readtable(tables,'Sheet','testset','Range','J1:J281');
 
 %% Cost Calculations
 %% 
@@ -18,7 +18,8 @@ testset = readtable(tables,'Sheet','testset','Range','D1:D281');
 %     % first all delay steps per runway per flight, then for other runway
 %     % only then to next flight
 
-D = [0:13];
+D = 14;
+F = 10;
     
 %% Fuel cost coefficient
 Cost_f = testset; % kg of kerosene/flight
@@ -54,7 +55,7 @@ cplex                   =    Cplex(model);  % define the new model
 cplex.Model.sense       =   'minimize';
 
 %   Decision variables
-DV                      =  numel(F)*2*numel(D) + numel(f)*2;  % Number of Decision Variables (X_f_r_d en Gxy)
+DV                      =  F*2*D + F*2;  % Number of Decision Variables (X_f_r_d en Gxy)
                            % # of F * 2 runways * # of delay steps 
                            % + # of F * 2 locations for noise        
 
@@ -69,7 +70,7 @@ ctype                   =   char(ones(1, (DV)) * ('C'));    % Variable types 'C'
 l = 1;                                 % Array with DV names
 for f = 1:numel(F) % for each flight
     for r = 1:numel(R) % for each runway                    
-        for d = D % for each delay
+        for d = 1:D % for each delay
             NameDV (l,:)  = ['X_' num2str(f,'%02d') ',' num2str(r,'%02d') '_' num2str(d,'%02d')];
             l = l + 1;
         end
@@ -90,7 +91,7 @@ cplex.addCols(obj, [], lb, ub, ctype, NameDV);
 for f = 1:numel(F) % for each flight
     C1 = zeros(1,DV);
     for r = 1:numel(R) % for each runway                    
-        for d = 1:numel(D) % for each delay
+        for d = 1:D % for each delay
             C1(Xindex(f,r,d)) = 1; % activate that DV
         end
     end
@@ -102,7 +103,7 @@ end
 for r = 1:numel(R) % should be R_res
     C2 = zeros(1,DV);
     for f = 1:numel(F)
-        for d = 1:numel(D)
+        for d = 1:D
             C2(Xindex(f,r,d)) = 1;
         end
     end
@@ -114,7 +115,7 @@ for t = 1:T % ???
     for r = 1:numel(R)
         C3 = zeros(1,DV);
         for f = 1:numel(F) % should be F_dep
-            for d = 1:numel(D)
+            for d = 1:D
                 C3(Xindex(f,r,d)) = n(f, r,t); % of the dependency matrix n ?
             end
         end
@@ -125,18 +126,18 @@ end
 % 4. Noise Limit Switching Constraint
 
 % missing xy, L_lim, C_noise
-for xy = 1:numel(XY)
-    C4 = zeros(1,DV);
-    for f = 1:numel(F) 
-        for r = 1:numel(R)                     
-            for d = 1:numel(D) 
-                C4(Xindex(f,r,d)) = C_noise(xy,f,r,d); % noise grid coeff?????
-            end
-        end
-    end
-    C4 = C4 - 10000 * G(xy);
-    cplex.addRows(0, C4, L_lim, sprintf('NLSC_%d',xy)); % C1 is sum of all activated DV's per f 
-end
+% for xy = 1:numel(XY)
+%     C4 = zeros(1,DV);
+%     for f = 1:numel(F) 
+%         for r = 1:numel(R)                     
+%             for d = 1:D 
+%                 C4(Xindex(f,r,d)) = C_noise(xy,f,r,d); % noise grid coeff?????
+%             end
+%         end
+%     end
+%     C4 = C4 - 10000 * G(xy);
+%     cplex.addRows(0, C4, L_lim, sprintf('NLSC_%d',xy)); % C1 is sum of all activated DV's per f 
+% end
 
 %%  Execute model 
 %%
