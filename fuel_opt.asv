@@ -12,13 +12,8 @@ testset = readtable(tables,'Sheet','testset','Range','D1:D281');
 %% Cost Calculations
 %% 
 %%  Assumptions
-% f = 10; % flights
-% r = 2; % runways
-% d = 14; % delay steps (0-13)
-%     % first all delay steps per runway per flight, then for other runway
-%     % only then to next flight
 
-D = [0:13];
+
     
 %% Fuel cost coefficient
 Cost_f = testset; % kg of kerosene/flight
@@ -69,7 +64,7 @@ ctype                   =   char(ones(1, (DV)) * ('C'));    % Variable types 'C'
 l = 1;                                 % Array with DV names
 for f = 1:numel(F) % for each flight
     for r = 1:numel(R) % for each runway                    
-        for d = D % for each delay
+        for d = 1:numel(D) % for each delay
             NameDV (l,:)  = ['X_' num2str(f,'%02d') ',' num2str(r,'%02d') '_' num2str(d,'%02d')];
             l = l + 1;
         end
