@@ -2,9 +2,11 @@
 %% Created: 27-06-2018
 %% This function will calculate which aircraft has to land where
 
-t = 0
-t_end = 3600
+n = 0;           % s
+A = [];    
 
-while t < t_end
+while n < 10
     [t_int, IAF, MTOW] = ac_generator;
-    t = t+20
+    A = [A ; t_int, IAF, MTOW];
+    n = n+1;
+    end

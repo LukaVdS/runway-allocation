@@ -6,15 +6,15 @@ function [t_int, IAF, MTOW] = ac_generator
 
     %% Random time interval generator
 
-    t_int_min = input('What is the minimum time interval (s)? ');  %minimum interval time between two generated a/c (s)
-
+    %t_int_min = input('What is the minimum time interval (s)? ');  %minimum interval time between two generated a/c (s)
+    t_int_min = 80;
     % Check if t_int_min < 20 and a multiple of 20 
     while t_int_min < 20. | rem(t_int_min,20) ~= 0
         t_int_min = input('Minimum time interval cannot be smaller than 20s and has to be divisible by 20. What is the minimum time interval (s)? ');
     end
 
-    t_int_max = input('What is the maximum time interval (s)? ');  % maximum interval time between two generated a/c (s)
-
+    %t_int_max = input('What is the maximum time interval (s)? ');  % maximum interval time between two generated a/c (s)
+    t_int_max = 240;
     % Check if t_int_min < t_int_max and a multiple of 20
 
     while t_int_max < t_int_min | rem(t_int_max,20) ~= 0
