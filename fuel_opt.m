@@ -126,18 +126,17 @@ end
 % 4. Noise Limit Switching Constraint
 
 % missing xy, L_lim, C_noise
-% for xy = 1:numel(XY)
-%     C4 = zeros(1,DV);
-%     for f = 1:numel(F) 
-%         for r = 1:numel(R)                     
-%             for d = 1:D 
-%                 C4(Xindex(f,r,d)) = C_noise(xy,f,r,d); % noise grid coeff?????
-%             end
-%         end
-%     end
-%     C4 = C4 - 10000 * G(xy);
-%     cplex.addRows(0, C4, L_lim, sprintf('NLSC_%d',xy)); % C1 is sum of all activated DV's per f 
-% end
+C4 = zeros(1,DV);
+for f = 1:numel(F) 
+    for r = 1:numel(R)                     
+        for d = 1:D 
+            C4(Xindex(f,r,d)) = C_noise(xy,f,r,d); % noise grid coeff?????
+        end
+    end
+end
+C4 = C4 - 10000 * G(xy);
+cplex.addRows(0, C4, L_lim, sprintf('NLSC_%d',xy)); % C1 is sum of all activated DV's per f 
+
 
 %%  Execute model 
 %%
