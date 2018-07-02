@@ -29,9 +29,6 @@ R = 2;  % runways
 delay = [1:6]*20;
 delay = [delay, 0];
 
-% Interval limit between 2 aircraft
-t_lim = 150; %seconden
-
 
 
 
@@ -114,20 +111,17 @@ for f = 1:F % for each flight
     cplex.addRows(1, C1, 1, sprintf('Always_Assign_FLight_%d_%d',r,d)); % C1 is sum of all activated DV's per f
 end 
 
-% 2. Runway Occupation RO_r,t
-for t = 1:T % ???
-    for r = 1:numel(R)
-        C3 = zeros(1,DV);
-        for f = 1:numel(F) % should be F_dep
-            for d = 1:D
-                C3(Xindex(f,r,d)) = n(f, r,t); % of the dependency matrix n ?
-            end
+% 2. Runway Restriction RR_r
+    % Needs to change, only for set of restricted runways???
+for r = 1:R % should be R_res
+    C2 = zeros(1,DV);
+    for f = 1:F
+        for d = 1:D
+            C2(Xindex(f,r,d)) = 1;
         end
-        cplex.addRows(0, C3, 1, sprintf('Runway_Occupation_%d_%d',f,d));
     end
+    cplex.addRows(0, C2, 0, sprintf('Restricted_Runway_%d_%d',f,d));
 end
-
-
 
 % 3. Noise Limit Switching Constraint
 
@@ -139,13 +133,11 @@ for r = 1:R
         C33 = zeros(1,DV);
         for d = 1:D 
                 C31(Xindex(f,r,d)) = time(f)+delay(d);
-            if f ~= F
-                C32(Xindex(f+1,r,d)) = time(f+1) + delay(d);     
-            end
+                C32(Xindex(f+1,r,d)) = time(f+1)+ delay(d);     
         end
         C33(Gindex(f,r)) = 1;
     end
-    C3 = C31 - C32 + t_lim + 1000 * C33;
+    C3 = C31 + C32 + t_lim + 1000 * C33;
     cplex.addRows(0, C3, 1000, sprintf('NLSC_%d_%d',f,r)); % C1 is sum of all activated DV's per f
 end
 
@@ -153,7 +145,7 @@ end
 %%  Execute model 
 %%
     sol = cplex.solve();
-    cplex.writeModel([model '.lp']);
+    xplex.writeModel([model '.lp']);
 %     OV = [];
 %     OV = [OV;IFAM.Solution.objval];
 %     dual    = IFAM.Solution.dual;
