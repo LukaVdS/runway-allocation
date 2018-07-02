@@ -34,36 +34,30 @@ t_lim = 150; %seconden
 
 
 
-
-
-
-%% Fuel cost coefficient
+%% Fuel and Populatio cost coefficient
 Cost_f = testset; % kg of kerosene/flight
 % Distance * MassFlow / Vtas ?
 
+Cost_p = [310; 200]; % amount of people affected *10
+Cost_p = repmat(Cost_p,F,1);
 
-
-
-
-%% Population cost coefficient
-Cost_p = []; 
-Cost_p = [ones(10, 1)*500; ones(10,1)*600]; % amount of people affected
-
-%% Alpha and Beta and Normalisation
-alpha = 1;
-beta = alpha-1;
- 
-nf = 1;
-nn = 1;
-
-%% All together
+% %% Alpha and Beta and Normalisation
+% alpha = 1;
+% beta = alpha-1;
+%  
+% nf = 1;
+% nn = 1;
+% 
+% %% All together
 % Cost_f = Cost_f * alpha * nf;
 % Cost_p = Cost_p * beta * nn;
 
 
 %% Set up for CPLEX
 %%
-%%  Initiate CPLEX model
+
+
+%%  FULL CPLEX model
 %   Create model 
 
 model                   =   'RW_Allocation_Model';    % name of model
@@ -114,24 +108,22 @@ for f = 1:F % for each flight
     cplex.addRows(1, C1, 1, sprintf('Always_Assign_FLight_%d_%d',r,d)); % C1 is sum of all activated DV's per f
 end 
 
-% 2. Runway Occupation RO_r,t
-for t = 1:T % ???
-    for r = 1:numel(R)
-        C3 = zeros(1,DV);
-        for f = 1:numel(F) % should be F_dep
-            for d = 1:D
-                C3(Xindex(f,r,d)) = n(f, r,t); % of the dependency matrix n ?
-            end
-        end
-        cplex.addRows(0, C3, 1, sprintf('Runway_Occupation_%d_%d',f,d));
-    end
-end
+% % 2. Runway Occupation RO_r,t
+% for t = 1:T % ???
+%     for r = 1:numel(R)
+%         C3 = zeros(1,DV);
+%         for f = 1:numel(F) % should be F_dep
+%             for d = 1:D
+%                 C3(Xindex(f,r,d)) = n(f, r,t); % of the dependency matrix n ?
+%             end
+%         end
+%         cplex.addRows(0, C3, 1, sprintf('Runway_Occupation_%d_%d',f,d));
+%     end
+% end
 
 
 
 % 3. Noise Limit Switching Constraint
-
-% missing xy, L_lim, C_noise
 for r = 1:R
     for f = 1:F
         C31 = zeros(1,DV);   
@@ -144,9 +136,9 @@ for r = 1:R
             end
         end
         C33(Gindex(f,r)) = 1;
+        C3 = - C31 + C32 - t_lim + 1000 * C33;
+        cplex.addRows(0, C3, 1000, sprintf('NLSC_%d_%d',f,r)); % C1 is sum of all activated DV's per f
     end
-    C3 = C31 - C32 + t_lim + 1000 * C33;
-    cplex.addRows(0, C3, 1000, sprintf('NLSC_%d_%d',f,r)); % C1 is sum of all activated DV's per f
 end
 
  
