@@ -73,7 +73,7 @@ DV                      =  F*R*D + F*R;  % Number of Decision Variables (X_f_r_d
 obj                     =   [Cost_f; Cost_p] ;      % coefficient of each DV
 lb                      =   zeros(DV, 1);           % Lower bounds
 ub                      =   inf(DV, 1);             % Upper bounds
-ctype                   =   char(ones(1, (DV)) * ('I'));    % Variable types 'C'=continuous; 'I'=integer; 'B'=binary
+ctype                   =   char(ones(1, (DV)) * ('C'));    % Variable types 'C'=continuous; 'I'=integer; 'B'=binary
 
 
 %% Naming DV's
@@ -126,18 +126,20 @@ end
 % 3. Noise Limit Switching Constraint
 for r = 1:R
     for f = 1:F
+        for f2 = 1:F
         C31 = zeros(1,DV);   
         C32 = zeros(1,DV); 
         C33 = zeros(1,DV);
         for d = 1:D 
                 C31(Xindex(f,r,d)) = time(f)+delay(d);
-            if f ~= F
-                C32(Xindex(f+1,r,d)) = time(f+1) + delay(d);     
+            if f ~= f2 
+                C32(Xindex(f2,r,d)) = time(f2)+delay(d);     
             end
         end
         C33(Gindex(f,r)) = 1;
-        C3 = - C31 + C32 - t_lim + 1000 * C33;
+        C3 = abs(- C31 + C32) - t_lim + 1000 * C33;
         cplex.addRows(0, C3, 1000, sprintf('NLSC_%d_%d',f,r)); % C1 is sum of all activated DV's per f
+        end
     end
 end
 
