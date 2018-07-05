@@ -1,0 +1,23 @@
+1. 	X_01,01_01: Vlucht 1 land op runway 1 met delay 20s
+	G_01,01_00: Vlucht 1 zorgt voor te veel noise op landingsbaan 1
+	De eerste DV is nodig voor zowel Noise als Fuel optimization, 
+	je moet weten waar een vlucht land om de noise te bepalen
+	De tweede DV is enkel nodig voor Noise, maar als je optimized voor fuel en je dus 0 cost geeft aan Noise,
+	maakte het toch niet uit wat de DV is dus kan je hem houden.
+	-> 	Voor de seperate_optimization gebruik je dezelfde DV, constraints, maar verander je de kosten:
+		X_DV kost niets voor noise, enkel G_DV kost
+		G_DV kost niets voor fuel, enkel X_DV kost
+
+	Korter uitgelegd: 
+	Ook in de noise-only case moet je de constraints dat elk vliegtuig land vervullen -> DV_fuel nodig
+	In fuel-only maak het niet uit wat DV_noise zijn aangezien er geen kost is -> DV_noise kunnen blijven
+	->	Je moet de DV niet opsplitsen, alleen cost function veranderen.
+
+2.	Voor constraint 3 kan je de arrival tijden berekenen voor alle X_00,00_00. 
+	Per X_00,00_00 kijk je of er X_DV van een andere vluchten bestaan die landen 160s voor jouw arrival tijd,
+	op dezelfde landingsbaan.
+	Als dat zo is dan som je ze op -> 1*X_Land_160s_Ervoor_1 + 1*...  = Totaal aantal vluchten die 160s ervoor landen
+	Deze som moet gelijk zijn aan 0 tenzij G_00,00_00 gelijk is aan 1 want dan wordt er een kost toegevoegd.
+	->	De requirement wordt: 1*X_land_160s_1 + 1*..... - M*G <= 0 per X_00,00_00.
+
+3. 	Waarom is X_00,00_01 een vlucht met 20s delay en niet 0? 

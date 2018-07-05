@@ -28,7 +28,7 @@ RWY_dependability = xlsread(tablaux_chris, 'RWY_DEPENDABILITY', 'A1:P9');
 %     % first all delay steps per runway per flight, then for other runway
 %     % only then to next flight
 
-D = 7; % delay steps (0-13)
+D = 7; % delay steps (1-7), with last step is 0 delay
 F = 10; % flights
 R = 2;  % runways
 
