@@ -161,7 +161,7 @@ cplex_model.Model.obj = obj_fuel;
 sol_fuel    =   cplex_model.solve();
 cplex_model.Model.colname(sol_fuel.x(1:140)==1,:)
 
-% % Should be removed @ CHRISTOPHE: MAG DIT WEG?
+% % Should be removed
 % obj_fuel    =   vertcat(Cost_f, ones(size(Cost_p))*0.000000000001); 
 % cplex_model.Model.obj = obj_fuel;
 % sol_fuel    =   cplex_model.solve();

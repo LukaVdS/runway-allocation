@@ -1444,8 +1444,8 @@ Bounds
  0 <= RgRunway_Occupation_RW_2_t_2600 <= 1
  0 <= RgRunway_Occupation_RW_1_t_2620 <= 1
  0 <= RgRunway_Occupation_RW_2_t_2620 <= 1
- 0 <= RgNLSC_1 <= 1300000000
- 0 <= RgNLSC_2 <= 1300000000
+ 0 <= RgNLSC_1 <= 1860000000
+ 0 <= RgNLSC_2 <= 1860000000
 Binaries
  X_01,01_01  X_01,01_02  X_01,01_03  X_01,01_04  X_01,01_05  X_01,01_06 
  X_01,01_07  X_01,02_01  X_01,02_02  X_01,02_03  X_01,02_04  X_01,02_05 
