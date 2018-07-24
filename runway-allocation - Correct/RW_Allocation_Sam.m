@@ -30,9 +30,9 @@ alpha = 0.5;
 % Constants
 Res     = 20; % Resolution of 20s 
 D       = 7; % delay steps (0-13)
-%F       = size(flights,1); % Number of flights
-F       = size(flights_scen1,1); % Number of flights
-%F       = size(flights_scen2,1); % Number of flights
+%F       = size(flights,1); % Number of flights, normal
+%F       = size(flights_scen1,1); % Number of flights, scenario 1
+F       = size(flights_scen2,1); % Number of flights, scenario 2
 R       = 2;  % runways
 FRD     = [F R D];
 
@@ -44,14 +44,17 @@ delay = [delay, 0];
 AEL = 85;
 limit = 60;
 Lim_Lden = 10^((limit)/10);
-T_den = xlsread(tablo,'flights','I2:I3'); % Min and Max arrival time
-L_limit = Lim_Lden * (T_den(2)-T_den(1)); % all is in seconds
+%T_den = xlsread(tablo,'flights','I2:I3');% Min and Max arrival time,normal
+%T_den = xlsread(tablo,'flights','I16:I17'); %scenario 1
+T_den = xlsread(tablo,'flights','I30:I31'); %scenario 2
 
-%% Fuel and Populatio cost coefficient
+L_limit = Lim_Lden * (T_den(2)-T_den(1)); % all is in seconds; normal
+
+%% Fuel and Population cost coefficient
 % Has F*D*R elements
-%Cost_f = testset; % kg of kerosene/flight
-Cost_f = testset_scen1;
-%Cost_f = testset_scen2;
+%Cost_f = testset; % kg of kerosene/flight, normal
+%Cost_f = testset_scen1; %scenario 1
+Cost_f = testset_scen2; %scenario 2
 
 % Has R elements
 Cost_p = [310;200]; % amount of people affected *10 R1 R2
@@ -99,11 +102,33 @@ cplex_model.addCols(obj, [], lb, ub, ctype, NameDV); % define DV with cost coeff
 
 %% Calculation of t_at_RWY for every X_00,00_00
 t_at_RWY = zeros(F*R*D,1);
+
+%% Normal:
+% for f = 1:F
+%     for r = 1:R
+%         for d = 1:D
+%             sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
+%             t_at_RWY(Xindex(f,r,d,FRD)) =flights(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
+%         end
+%     end
+% end
+
+%% Scenario 1:
+% for f = 1:F
+%     for r = 1:R
+%         for d = 1:D
+%             sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights_scen1(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
+%             t_at_RWY(Xindex(f,r,d,FRD)) =flights_scen1(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
+%         end
+%     end
+% end
+
+%% Scenario 2:
 for f = 1:F
     for r = 1:R
         for d = 1:D
-            sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
-            t_at_RWY(Xindex(f,r,d,FRD)) =flights(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
+            sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights_scen2(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
+            t_at_RWY(Xindex(f,r,d,FRD)) =flights_scen2(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
         end
     end
 end
@@ -121,6 +146,55 @@ for f = 1:F % for each flight
 end
 
 % 2. Runway Occupation RO,r_c,t_c
+%% Normal:
+% RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
+% for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
+%     for r_c = 1:R               % Check for both runways
+%         C2 = zeros(1, DV);      % Create new constraint, analyze every DV (f,r,d)
+%         for f = 1:F % for each flight
+%             for r = 1:R % to each runway                    
+%                 for d = 1:D % with each delay
+%                     % find occupation time range
+%                     % select arriving RWY = r, dependant RWY = r_c, and
+%                     % flight MTOW = flight(f,3)
+%                     sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights(f,3),4:end)==1; 
+%                     t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
+%                     if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
+%                         C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
+%                     end
+%                 end
+%             end
+%         end
+%         cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%     end
+% end
+% M = 10^(AEL/10)*10; 
+
+%% Scenario 1:
+% RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
+% for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
+%     for r_c = 1:R               % Check for both runways
+%         C2 = zeros(1, DV);      % Create new constraint, analyze every DV (f,r,d)
+%         for f = 1:F % for each flight
+%             for r = 1:R % to each runway                    
+%                 for d = 1:D % with each delay
+%                     % find occupation time range
+%                     % select arriving RWY = r, dependant RWY = r_c, and
+%                     % flight MTOW = flight(f,3)
+%                     sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights_scen1(f,3),4:end)==1; 
+%                     t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
+%                     if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
+%                         C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
+%                     end
+%                 end
+%             end
+%         end
+%         cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%     end
+% end
+% M = 10^(AEL/10)*10; 
+
+%% Scenario 2:
 RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
 for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
     for r_c = 1:R               % Check for both runways
@@ -131,7 +205,7 @@ for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check
                     % find occupation time range
                     % select arriving RWY = r, dependant RWY = r_c, and
                     % flight MTOW = flight(f,3)
-                    sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights(f,3),4:end)==1; 
+                    sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights_scen2(f,3),4:end)==1; 
                     t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
                     if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
                         C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
@@ -142,8 +216,8 @@ for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check
         cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
     end
 end
-
 M = 10^(AEL/10)*10; 
+
 % 3. Noise Frequency Switch
 for r = 1:R
     C31 = zeros(1,DV);
