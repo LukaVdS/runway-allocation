@@ -1,6 +1,6 @@
 %addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio128\cplex\matlab\x64_win64'); % Chris 
-%addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio1271\cplex\matlab\x64_win64'); %Luka
-addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio128\cplex\matlab\x64_win64'); %Sam
+addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio1271\cplex\matlab\x64_win64'); %Luka
+%addpath('C:\Program Files\IBM\ILOG\CPLEX_Studio128\cplex\matlab\x64_win64'); %Sam
 
 % This program will optimize the runway allocation using CPLEX 
 % considering fuel consumption.
@@ -22,7 +22,7 @@ RWY_dep         =   xlsread(tableaux, 'RWY_DEPENDABILITY', 'A1:P9');
 %% Cost Calculations
 %% 
 %%  Assumptions
-alpha = 0.5;
+alpha = 0.99;
 % Constants
 Res     = 20; % Resolution of 20s 
 D       = 7; % delay steps (0-13)
@@ -187,6 +187,8 @@ cplex_model.Model.colname(sol.x(1:140)==1,:)
 
 % Write .lp file
 cplex_model.writeModel([model '.lp']);
+
+alpha
 
 time = toc; % so you know how long it all takes
 
