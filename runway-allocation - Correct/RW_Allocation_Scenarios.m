@@ -26,13 +26,13 @@ RWY_dep         =   xlsread(tableaux, 'RWY_DEPENDABILITY', 'A1:P9');
 %% Cost Calculations
 %% 
 %%  Assumptions
-alpha = 1;
+alpha = 0;
 % Constants
 Res     = 20; % Resolution of 20s 
 D       = 7; % delay steps (0-13)
-F       = size(flights,1); % Number of flights, normal
+%F       = size(flights,1); % Number of flights, normal
 %F       = size(flights_scen1,1); % Number of flights, scenario 1
-%F       = size(flights_scen2,1); % Number of flights, scenario 2
+F       = size(flights_scen2,1); % Number of flights, scenario 2
 R       = 2;  % runways
 FRD     = [F R D];
 
@@ -42,19 +42,19 @@ delay = [delay, 0];
 
 % Accoustic Emission Level en Limit (see p45, Eq. 5.17 and 5.18)
 AEL = 85;
-limit = 60;
+limit = 65;
 Lim_Lden = 10^((limit)/10);
-T_den = xlsread(tablo,'flights','I2:I3');% Min and Max arrival time,normal
+%T_den = xlsread(tablo,'flights','I2:I3');% Min and Max arrival time,normal
 %T_den = xlsread(tablo,'flights','I16:I17'); %scenario 1
-%T_den = xlsread(tablo,'flights','I30:I31'); %scenario 2
+T_den = xlsread(tablo,'flights','I30:I31'); %scenario 2
 
 L_limit = Lim_Lden * (T_den(2)-T_den(1)); % all is in seconds; normal
 
 %% Fuel and Population cost coefficient
 % Has F*D*R elements
-Cost_f = testset; % kg of kerosene/flight, normal
+%Cost_f = testset; % kg of kerosene/flight, normal
 %Cost_f = testset_scen1; %scenario 1
-%Cost_f = testset_scen2; %scenario 2
+Cost_f = testset_scen2; %scenario 2
 
 % Has R elements
 Cost_p = [310;200]; % amount of people affected *10 R1 R2
@@ -66,9 +66,21 @@ Cost_p = [310;200]; % amount of people affected *10 R1 R2
 %% Initiate  CPLEX
 %   Create model 
 
+% General model
 model                       =   'Opt_Model';    % name of model
 cplex_model                 =   Cplex(model);  % define the new model
 cplex_model.Model.sense     =   'minimize';
+
+% Optimum noise model
+model_noise                       =   'Opt_Model_noise';    % name of model
+cplex_model_noise                 =   Cplex(model_noise);  % define the new model
+cplex_model_nnoise.Model.sense    =   'minimize';
+
+% Optimum fuel model
+model_fuel                        =   'Opt_Model_fuel';    % name of model
+cplex_model_fuel                  =   Cplex(model_fuel);  % define the new model
+cplex_model_fuel.Model.sense      =   'minimize';
+
 %   Decision variables
 DV                          =   D*F*R+R;  % Number of Decision Variables
 %   Initialize the objective function column
@@ -99,19 +111,21 @@ NameDV = vertcat(NameDV_fuel, NameDV_noise);
 
 % Set up objective function
 cplex_model.addCols(obj, [], lb, ub, ctype, NameDV); % define DV with cost coefficients
+cplex_model_noise.addCols(obj, [], lb, ub, ctype, NameDV); % define DV with cost coefficients
+cplex_model_fuel.addCols(obj, [], lb, ub, ctype, NameDV); % define DV with cost coefficients
 
 %% Calculation of t_at_RWY for every X_00,00_00
 t_at_RWY = zeros(F*R*D,1);
 
 %% Normal:
-for f = 1:F
-    for r = 1:R
-        for d = 1:D
-            sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
-            t_at_RWY(Xindex(f,r,d,FRD)) =flights(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
-        end
-    end
-end
+% for f = 1:F
+%     for r = 1:R
+%         for d = 1:D
+%             sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
+%             t_at_RWY(Xindex(f,r,d,FRD)) =flights(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
+%         end
+%     end
+% end
 
 %% Scenario 1:
 % for f = 1:F
@@ -124,14 +138,14 @@ end
 % end
 
 %% Scenario 2:
-% for f = 1:F
-%     for r = 1:R
-%         for d = 1:D
-%             sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights_scen2(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
-%             t_at_RWY(Xindex(f,r,d,FRD)) =flights_scen2(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
-%         end
-%     end
-% end
+for f = 1:F
+    for r = 1:R
+        for d = 1:D
+            sel = t_to_RWY(t_to_RWY(:,1)==r & t_to_RWY(:,2)==flights_scen2(f,2),:); % Select t_to_RWY to RWY r from RWY flights(f,2)
+            t_at_RWY(Xindex(f,r,d,FRD)) =flights_scen2(f,4) + sel(3) + delay(d); % Time at runway = time IAF + time to runway + delay
+        end
+    end
+end
 
 %%  Constraints
 % 1. Always assign flight AAS_f
@@ -143,32 +157,36 @@ for f = 1:F % for each flight
         end
     end
     cplex_model.addRows(1, C1, 1, sprintf('Always_Assign_FLight_%d',f)); % C1 is sum of all activated DV's per f
+    cplex_model_noise.addRows(1, C1, 1, sprintf('Always_Assign_FLight_%d',f)); % C1 is sum of all activated DV's per f
+    cplex_model_fuel.addRows(1, C1, 1, sprintf('Always_Assign_FLight_%d',f)); % C1 is sum of all activated DV's per f
 end
 
 % 2. Runway Occupation RO,r_c,t_c
-%% Normal:
-RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
-for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
-    for r_c = 1:R               % Check for both runways
-        C2 = zeros(1, DV);      % Create new constraint, analyze every DV (f,r,d)
-        for f = 1:F % for each flight
-            for r = 1:R % to each runway                    
-                for d = 1:D % with each delay
-                    % find occupation time range
-                    % select arriving RWY = r, dependant RWY = r_c, and
-                    % flight MTOW = flight(f,3)
-                    sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights(f,3),4:end)==1; 
-                    t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
-                    if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
-                        C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
-                    end
-                end
-            end
-        end
-        cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
-    end
-end
-M = 10^(AEL/10)*10; 
+% %% Normal:
+% RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
+% for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
+%     for r_c = 1:R               % Check for both runways
+%         C2 = zeros(1, DV);      % Create new constraint, analyze every DV (f,r,d)
+%         for f = 1:F % for each flight
+%             for r = 1:R % to each runway                    
+%                 for d = 1:D % with each delay
+%                     % find occupation time range
+%                     % select arriving RWY = r, dependant RWY = r_c, and
+%                     % flight MTOW = flight(f,3)
+%                     sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights(f,3),4:end)==1; 
+%                     t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
+%                     if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
+%                         C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
+%                     end
+%                 end
+%             end
+%         end
+%         cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%         cplex_model_noise.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%         cplex_model_fuel.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%     end
+% end
+% M = 10^(AEL/10)*10; 
 
 %% Scenario 1:
 % RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
@@ -190,33 +208,37 @@ M = 10^(AEL/10)*10;
 %             end
 %         end
 %         cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%         cplex_model_noise.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+%         cplex_model_fuel.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
 %     end
 % end
 % M = 10^(AEL/10)*10; 
 
 %% Scenario 2:
-% RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
-% for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
-%     for r_c = 1:R               % Check for both runways
-%         C2 = zeros(1, DV);      % Create new constraint, analyze every DV (f,r,d)
-%         for f = 1:F % for each flight
-%             for r = 1:R % to each runway                    
-%                 for d = 1:D % with each delay
-%                     % find occupation time range
-%                     % select arriving RWY = r, dependant RWY = r_c, and
-%                     % flight MTOW = flight(f,3)
-%                     sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights_scen2(f,3),4:end)==1; 
-%                     t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
-%                     if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
-%                         C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
-%                     end
-%                 end
-%             end
-%         end
-%         cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
-%     end
-% end
-% M = 10^(AEL/10)*10; 
+RWY_dep_pos = RWY_dep(1,4:end); % All occupation periods centered around arrival time
+for t_c = min(t_at_RWY):Res:max(t_at_RWY)  % Between the possible arrivals check every 20 seconds
+    for r_c = 1:R               % Check for both runways
+        C2 = zeros(1, DV);      % Create new constraint, analyze every DV (f,r,d)
+        for f = 1:F % for each flight
+            for r = 1:R % to each runway                    
+                for d = 1:D % with each delay
+                    % find occupation time range
+                    % select arriving RWY = r, dependant RWY = r_c, and
+                    % flight MTOW = flight(f,3)
+                    sel = RWY_dep(RWY_dep(:,1)==r & RWY_dep(:,2)==r_c & RWY_dep(:,3)==flights_scen2(f,3),4:end)==1; 
+                    t_range = RWY_dep_pos(sel) + t_at_RWY(Xindex(f,r,d,FRD)); % select the occupation periods range
+                    if ismember(t_c, t_range) % if the flight (f) landing at runway (r) with delay (d) influences the depending runway (r_c) at that time (t_c)
+                        C2(Xindex(f,r,d,FRD)) = 1; % set its block to one.
+                    end
+                end
+            end
+        end
+        cplex_model.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+        cplex_model_noise.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+        cplex_model_fuel.addRows(0, C2, 1, sprintf('Runway_Occupation_RW_%d_t_%d',r_c,t_c));
+    end
+end
+M = 10^(AEL/10)*10; 
 
 % 3. Noise Frequency Switch
 for r = 1:R
@@ -230,6 +252,8 @@ for r = 1:R
     C32(Gindex(r,FRD)) = M;
     C3 = C31 - C32;
     cplex_model.addRows(0, C3, L_limit, sprintf('NLSC_%d',r));
+    cplex_model_noise.addRows(0, C3, L_limit, sprintf('NLSC_%d',r));
+    cplex_model_fuel.addRows(0, C3, L_limit, sprintf('NLSC_%d',r));
 end
         % The sum of all flights per runway (or coordinate) times the AEL
         % (or Accoustic Emission Level) has to be smaller than the limit.
@@ -238,18 +262,21 @@ end
 
 %%  Execute model 
 %% Parametrization
+% Optimize for noise
+obj_noise   =   vertcat(zeros(size(Cost_f)), Cost_p); % make costs of fuel 0
+cplex_model_noise.Model.obj = obj_noise;
+sol_noise   =   cplex_model_noise.solve();
+cplex_model_noise.Model.colname(sol_noise.x(1:142)==1,:)
 
 % Optimize for fuel
-obj_noise   =   vertcat(zeros(size(Cost_f)), Cost_p); % make costs of fuel 0
-cplex_model.Model.obj = obj_noise;
-sol_noise   =   cplex_model.solve();
-cplex_model.Model.colname(sol_noise.x(1:140)==1,:)
-
-% Optimize for noise
 obj_fuel    =   vertcat(Cost_f, zeros(size(Cost_p))); % make costs of noise 0
-cplex_model.Model.obj = obj_fuel;       
-sol_fuel    =   cplex_model.solve();
-cplex_model.Model.colname(sol_fuel.x(1:140)==1,:)
+cplex_model_fuel.Model.obj = obj_fuel;       
+sol_fuel    =   cplex_model_fuel.solve();
+cplex_model_fuel.Model.colname(sol_fuel.x(1:142)==1,:)
+
+
+
+
 
 
 % Set parametrization factors (see p46, Eq. 5.23 and 5.24)
@@ -260,7 +287,7 @@ n_noise     =   1/(obj_noise.'*sol_fuel.x - obj_noise.'*sol_noise.x);
 obj         =   vertcat(alpha*n_fuel*Cost_f, (1-alpha)*n_noise*Cost_p);
 cplex_model.Model.obj = obj;
 sol         =   cplex_model.solve();
-cplex_model.Model.colname(sol.x(1:140)==1,:)
+cplex_model.Model.colname(sol.x(1:142)==1,:)
 
 % Write .lp file
 cplex_model.writeModel([model '.lp']);
